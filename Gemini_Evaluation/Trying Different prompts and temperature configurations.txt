@@ -1,0 +1,37 @@
+Line 0 is the human expert
+expert 1 is set to [5, 5, 5, 1, 1, 4, 3, 1, 2, 3, 1, 2, 1, 5, 5]
+expert 2 is set to [5, 5, 5, 3, 2, 3, 3, 2, 2, 4, 1, 2, 4, 5, 4]
+
+line 1 and 2 is first pair of temperature and top_k, where line 1 is prompt template 0, and line 2 is prompt template 1
+line 4 and 5 is first pair of temperature and top_k, where line 4 is prompt template 0, and line 5 is prompt template 1
+and so on
+
+temp_topk_pairs = [(1, 10), 
+                   (1, 5), 
+                   (1, 1), 
+                   (0.8, 10), 
+                   (0.8, 5), 
+                   (0.8, 1), 
+                   (0.6, 10), 
+                   (0.6, 5), 
+                   (0.6, 1), 
+                   (0.3, 10), 
+                   (0.3, 5), 
+                   (0.3, 1), 
+                   (0.1, 10), 
+]
+
+prompt_templates = {
+    0: """You are a medical expert. Rate the following Transcripts according to the given Question. {QUESTION_TAIL}
+Question: {question}
+Transcript: {transcript}""",
+
+    1: """{QUESTION_HEAD} {question} {QUESTION_TAIL}
+Transcript: {transcript}""",
+}
+
+
+QUESTION_HEAD = "You are a medical expert. Rate the following Transcripts according to the given Question."
+QUESTION_TAIL = "Return an integer score from 1 to 5, where 1 means 'no', 2 to 4 means 'partially', and 5 means 'yes'. Then, explain your choice"
+video_id = "sjH6PE9-MTI"
+transcript = "The trigger finger is a condition that involves the tendons of the hand and the fingers. The tendons of the fingers pass through a series of pulleys, much like a fishing line passes through a series of guide wires on a fishing pole. These pulleys give us a mechanical advantage and give us a very strong grip. However, oftentimes the tendons can become inflamed and the pulleys can become thickened. This is what is referred to as a trigger finger. The symptoms of trigger finger consist of pain at the base of the fingers that is often associated with a nodule or a small bump that can be felt and it can oftentimes be associated with catching or locking of the finger. In very severe cases, this does require manual assistance to obtain full extension of the fingers. Trigger finger is often caused by such conditions as rheumatoid arthritis, gout, or diabetes, but oftentimes the cause is undetermined. If you suspect that you may be suffering from trigger finger, the first thing to do is begin taking anti-inflammatory medications such as Aleve or ibuprofen. This will assist with the pain and will also decrease the inflammation around the tendon. You may also try gentle stretching at home, which would consist of locking the affected finger together and slowly stretching it out to try to stretch the tendon and prevent it from locking or triggering. If this does not work, it is advised to see your local hand surgeon, at which point you may receive a corticosteroid injection into the area of the pain at the base of the palm. A corticosteroid injection is extremely effective at decreasing the pain and oftentimes eliminating a trigger finger. If a corticosteroid injection does not work, a small surgery is recommended. For more information, please visit your local hand surgeon or visit www.orlandohandsurgery.com."
