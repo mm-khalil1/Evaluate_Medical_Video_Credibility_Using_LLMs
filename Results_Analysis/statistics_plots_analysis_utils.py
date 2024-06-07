@@ -3,14 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
-from scipy.stats import ttest_rel, wilcoxon, shapiro, kstest
+from scipy.stats import ttest_rel, wilcoxon, shapiro, kstest, kendalltau, spearmanr
+from irrCAC.raw import CAC
 from sklearn.metrics import cohen_kappa_score
 from pingouin import intraclass_corr
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 
 import warnings
 
-# Suppress warnings for scipy functions
+# Suppress warnings for scipy functions: "UserWarning: Sample size too small for normal approximation."
 warnings.filterwarnings("ignore", category=UserWarning, module="scipy")
 
 MODEL_15_SCORE_COLUMNS = [f"Q{i}" for i in range(1,16)]         # [Q1, Q2, ... Q15]
@@ -34,13 +35,13 @@ def filter_df_by_topics(df: pd.DataFrame, topics_dict: dict, topic_keys: list, r
     Filter DataFrame rows based on specific topics.
 
     Parameters:
-    df (DataFrame): DataFrame to be filtered.
-    topics_dict (dict): Dictionary mapping topic keys to topic values.
-    topic_keys (list): List of topic keys to filter by.
-    return_cols (list): List of columns to return in the filtered DataFrame.
+        df (DataFrame): DataFrame to be filtered.
+        topics_dict (dict): Dictionary mapping topic keys to topic values.
+        topic_keys (list): List of topic keys to filter by.
+        return_cols (list): List of columns to return in the filtered DataFrame.
 
     Returns:
-    DataFrame: Filtered DataFrame containing specified columns.
+        DataFrame: Filtered DataFrame containing specified columns.
     """
     # Input validation
     if not isinstance(df, pd.DataFrame):
@@ -62,13 +63,13 @@ def calculate_experts_avg_of_questions(df, expert1_columns, expert2_columns, col
     Calculate question-wise expert average for each pair of expert columns and insert them into the DataFrame.
 
     Parameters:
-    df (DataFrame): DataFrame containing the group data.
-    expert1_columns (list): List of column names corresponding to expert 1.
-    expert2_columns (list): List of column names corresponding to expert 2.
-    column_loc (int, optional): Location where the new columns should be inserted. Defaults to len(df.columns).
+        df (DataFrame): DataFrame containing the group data.
+        expert1_columns (list): List of column names corresponding to expert 1.
+        expert2_columns (list): List of column names corresponding to expert 2.
+        column_loc (int, optional): Location where the new columns should be inserted. Defaults to len(df.columns).
 
     Returns:
-    DataFrame: DataFrame with question-wise expert averages inserted.
+        DataFrame: DataFrame with question-wise expert averages inserted.
     """
     if column_loc is None:
         column_loc = len(df.columns)
@@ -92,11 +93,11 @@ def sum_columns(df: pd.DataFrame, score_columns_list: List[str]) -> pd.DataFrame
     Sum the values of columns starting with "Q" and store the result in a new column named "Model Total".
 
     Parameters:
-    df (DataFrame): DataFrame containing the score columns.
-    score_columns_list (List[str]): List of column names to sum.
+        df (DataFrame): DataFrame containing the score columns.
+        score_columns_list (List[str]): List of column names to sum.
 
     Returns:
-    DataFrame: DataFrame with the sum of values stored in a new column named "Model Total".
+        DataFrame: DataFrame with the sum of values stored in a new column named "Model Total".
     """
     # Calculate the sum of values in the specified score_columns
     total_scores = df[score_columns_list].sum(axis=1)
@@ -118,17 +119,17 @@ def merge_dataframes(main_df: pd.DataFrame, scores_df: pd.DataFrame,
     Merge selected columns from scores_df into main_df based on specified parameters.
 
     Parameters:
-    main_df (DataFrame): The main DataFrame into which the selected columns from scores_df will be merged.
-    scores_df (DataFrame): The DataFrame containing the scores to be merged.
-    selected_columns (List[str]): A list of column names from scores_df to be merged into main_df.
-    how (str, optional): The type of merge to be performed ('inner', 'outer', 'left', or 'right'). Defaults to 'inner'.
-    on (str, optional): The column name to join on. Defaults to 'Video ID'.
+        main_df (DataFrame): The main DataFrame into which the selected columns from scores_df will be merged.
+        scores_df (DataFrame): The DataFrame containing the scores to be merged.
+        selected_columns (List[str]): A list of column names from scores_df to be merged into main_df.
+        how (str, optional): The type of merge to be performed ('inner', 'outer', 'left', or 'right'). Defaults to 'inner'.
+        on (str, optional): The column name to join on. Defaults to 'Video ID'.
 
     Returns:
-    DataFrame: The merged DataFrame containing the selected columns from scores_df merged into main_df.
+        DataFrame: The merged DataFrame containing the selected columns from scores_df merged into main_df.
 
     Raises:
-    Exception: If an error occurs during the merging process.
+        Exception: If an error occurs during the merging process.
     """
     try:
         return pd.merge(main_df, scores_df[selected_columns], how=how, on=on)
@@ -140,18 +141,18 @@ def set_plot_properties(plot_obj: plt.Axes, **kwargs) -> None:
     Set various properties of a plot object based on keyword arguments.
 
     Parameters:
-    plot_obj (plt.Axes): The plot object whose properties will be set.
-    **kwargs: Additional keyword arguments to set specific properties of the plot object.
-        Supported keyword arguments:
-        - xlim (tuple): Tuple specifying the x-axis limits (left, right).
-        - ylim (tuple): Tuple specifying the y-axis limits (bottom, top).
-        - xlabel (str): Label for the x-axis.
-        - ylabel (str): Label for the y-axis.
-        - title (str): Title of the plot.
-        - xticks_rotation (int): Rotation angle (in degrees) for x-axis tick labels.
+        plot_obj (plt.Axes): The plot object whose properties will be set.
+        **kwargs: Additional keyword arguments to set specific properties of the plot object.
+            Supported keyword arguments:
+            - xlim (tuple): Tuple specifying the x-axis limits (left, right).
+            - ylim (tuple): Tuple specifying the y-axis limits (bottom, top).
+            - xlabel (str): Label for the x-axis.
+            - ylabel (str): Label for the y-axis.
+            - title (str): Title of the plot.
+            - xticks_rotation (int): Rotation angle (in degrees) for x-axis tick labels.
 
     Returns:
-    None
+        None
 
     Example:
     ```
@@ -170,23 +171,23 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
     Create a seaborn plot of specified type with given data and properties.
 
     Parameters:
-    plot_type (str): Type of plot to create. Supported types: 'countplot', 'histplot', 'boxplot', 'bar', 'barh', 'heatmap'.
-    data (pd.DataFrame): DataFrame containing the data to plot.
-    x (str, optional): Variable to plot on the x-axis.
-    ax (plt.Axes, optional): Axes object to draw the plot onto.
-    color (str, optional): Color of the plot elements.
-    **kwargs: Additional keyword arguments to customize the plot.
+        plot_type (str): Type of plot to create. Supported types: 'countplot', 'histplot', 'boxplot', 'bar', 'barh', 'heatmap'.
+        data (pd.DataFrame): DataFrame containing the data to plot.
+        x (str, optional): Variable to plot on the x-axis.
+        ax (plt.Axes, optional): Axes object to draw the plot onto.
+        color (str, optional): Color of the plot elements.
+        **kwargs: Additional keyword arguments to customize the plot.
 
     Supported keyword arguments:
-    - order (list): Order of categories for 'countplot'.
-    - bins (int): Number of bins for 'histplot'.
-    - width (float): Width of the boxes for 'boxplot'.
-    - values (array-like): Values for 'bar' plot.
-    - columns (array-like): Columns for 'bar' plot.
-    - figsize (tuple): Figure size (width, height) in inches.
+        - order (list): Order of categories for 'countplot'.
+        - bins (int): Number of bins for 'histplot'.
+        - width (float): Width of the boxes for 'boxplot'.
+        - values (array-like): Values for 'bar' plot.
+        - columns (array-like): Columns for 'bar' plot.
+        - figsize (tuple): Figure size (width, height) in inches.
 
     Returns:
-    None
+        None
 
     Example:
     ```
@@ -245,7 +246,7 @@ def test_normality(data) -> None:
     Perform Shapiro-Wilk and Kolmogorov-Smirnov normality tests on the input data and print the p-value.
 
     Parameters:
-    data (array-like): The data to be tested for normality.
+        data (array-like): The data to be tested for normality.
     """
     # Input validation
     if not isinstance(data, (list, tuple, np.ndarray)):
@@ -276,11 +277,11 @@ def concordance_corr_coef(x: pd.Series, y: pd.Series) -> float:
     Calculate the concordance correlation coefficient between two variables.
 
     Parameters:
-    x (pd.Series): First variable.
-    y (pd.Series): Second variable.
+        x (pd.Series): First variable.
+        y (pd.Series): Second variable.
 
     Returns:
-    float: The concordance correlation coefficient.
+        float: The concordance correlation coefficient.
     """
     if not isinstance(x, pd.Series):
         x = pd.Series(x)
@@ -297,21 +298,60 @@ def concordance_corr_coef(x: pd.Series, y: pd.Series) -> float:
     
     return ccc
 
-def calculate_statistics(df: pd.DataFrame, col1: str, col2: str, all_ratings: List[int] = [1, 2, 3, 4, 5]) -> dict:
+def calculate_percent_weighted_agreement(rater1: List[float], rater2: List[float], categories: List[int]) -> float:
     """
-    Calculate various statistics including paired t-test, Wilcoxon signed-rank test,
-    Weighted Kappa, ICC3, and CCC between two columns in a DataFrame.
+    Calculate the percent weighted agreement between a model's ratings
+    and the average of expert ratings for ordinal categories.
 
     Parameters:
-    df (DataFrame): DataFrame containing the data.
-    col1 (str): Name of the first column.
-    col2 (str): Name of the second column.
+        rater1 (List[float]): List of ratings by the model.
+        rater2 (List[float]): List of average ratings by experts (can be decimal).
+        categories (List[int]): List of ordinal categories defining the range.
 
     Returns:
-    dict: A dictionary containing the calculated statistics.
+        float: Percent weighted agreement.
+    
+    Raises:
+        ValueError: If inputs are invalid.
+    """
+    if len(rater1) != len(rater2):
+        raise ValueError("Rater1 and Rater2 lists must have the same length.")
+    
+    # Calculate the range of categories
+    category_range = max(categories) - min(categories)
+    if category_range == 0:
+        raise ValueError("The range of categories must be greater than zero.")
+    
+    sum_of_weights = 0
+    num_ratings = len(rater1)
+
+    for r1, r2 in zip(rater1, rater2):
+        difference = abs(r1 - r2)
+        weight = 1 - (difference / category_range)
+        sum_of_weights += weight
+
+    percent_weighted_agreement = sum_of_weights / num_ratings
+    return percent_weighted_agreement
+
+def calculate_statistics(df: pd.DataFrame, col1: str, col2: str, categories: List[int]) -> Dict[str, float]:
+    """
+    Calculate various statistics between two columns in a DataFrame, including Brennan-Prediger Kappa, 
+    Weighted Kappa, Intra-class Correlation Coefficient, and Gwet's AC2.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame containing the data.
+    col1 (str): Name of the first column.
+    col2 (str): Name of the second column.
+    categories (List[int]): Unique categories in the data.
+
+    Returns:
+        Dict[str, float]: A dictionary containing the calculated statistics.
+    
+    Raises:
+        ValueError: If the specified columns do not exist in the DataFrame.
     """
     # Input validation
-    if col1 not in df.columns or col2 not in df.columns:
+    if col1 not in df.columns:
         raise ValueError(f"'{col1}' does not exist in the DataFrame.")
     if col2 not in df.columns:
         raise ValueError(f"'{col2}' does not exist in the DataFrame.")
@@ -321,83 +361,151 @@ def calculate_statistics(df: pd.DataFrame, col1: str, col2: str, all_ratings: Li
     df = df.dropna(subset=['Video ID', col1, col2])
 
     # Perform Wilcoxon signed-rank test
-    try:
-        _, p_value_wilcoxon = wilcoxon(df[col1], df[col2])
-    except Exception as e:
-        raise RuntimeError(f"Error in performing Wilcoxon signed-rank test: {str(e)}")
+    _, p_value_wilcoxon = wilcoxon(df[col1], df[col2])
     
     # Perform paired t-test
-    try:
-        _, p_value_ttest = ttest_rel(df[col1], df[col2])
-    except Exception as e:
-        raise RuntimeError(f"Error in performing paired t-test: {str(e)}")
-
-    # Calculate Intraclass Correlation Coefficient
-    try:
-        df_long = df.melt(id_vars=['Video ID'], var_name='Rater', value_name='Score')
-        icc_results = intraclass_corr(data=df_long, targets='Video ID', raters='Rater', ratings='Score')
-        icc3 = icc_results.loc[icc_results['Type'] == 'ICC3', 'ICC'].values[0]
-    except Exception as e:
-        raise RuntimeError(f"Error in calculating Intraclass Correlation Coefficient: {str(e)}")
+    _, p_value_ttest = ttest_rel(df[col1], df[col2])
+    
+ # Calculate Intraclass Correlation Coefficient
+    df_long = df.melt(id_vars=['Video ID'], var_name='Rater', value_name='Score')
+    icc_results = intraclass_corr(data=df_long, targets='Video ID', raters='Rater', ratings='Score')
+    icc3 = icc_results.loc[icc_results['Type'] == 'ICC3', 'ICC'].values[0]
 
     # Calculate Concordance Correlation Coefficient
-    try:
-        ccc = concordance_corr_coef(df[col1], df[col2])
-    except Exception as e:
-        raise RuntimeError(f"Error in calculating Concordance Correlation Coefficient: {str(e)}")
+    ccc = concordance_corr_coef(df[col1], df[col2])
+    
+    abs_mean_diff = np.mean(np.abs(df[col1] - df[col2]))
 
-    # Calculate Weighted Kappa
     kappa = cohen_kappa_score(df[col1].round(0), df[col2].round(0), 
-                              weights='quadratic', labels=all_ratings)
+                              labels=categories, weights='quadratic')
+    
+    weighted_per_agr = calculate_percent_weighted_agreement(df[col1], df[col2], categories)
+
+    cac = CAC(df[[col1, col2]], weights='ordinal', categories=categories)
+    gwet_ac = cac.gwet().get('est').get('coefficient_value')
+    brennan_prediger_kappa = cac.bp().get('est').get('coefficient_value')
+
+    spearman_rho, _ = spearmanr(df[col1], df[col2])
+    
+    kendall, _ = kendalltau(df[col1], df[col2])
+
+    # bag_s_value = bag_s(df[col1].round(0), df[col2].round(0), categories)
 
     # Store the statistics in a dictionary
     statistics = {
-        "Wilcoxon signed-rank test p-value": p_value_wilcoxon,
-        "Paired t-test p-value": p_value_ttest,
-        "ICC3": icc3,
-        "CCC": ccc,
+        # "BAG's S": bag_s_value,
+        "Brennan-Prediger Kappa": brennan_prediger_kappa,
         "Weighted Kappa": kappa,
-    }
+        "Spearman's Rho": spearman_rho,
+        "Kendall's Tau": kendall,
+        "ICC3": icc3,
+        # "CCC": ccc,
+        "Gwet's AC2": gwet_ac,
+        # "Weighted Percent Agreement": weighted_per_agr,
 
+        # "Wilcoxon signed-rank test p-value": p_value_wilcoxon,
+        # "Paired t-test p-value": p_value_ttest,
+        # "Absolute Mean Difference": abs_mean_diff,
+    }
     return statistics
 
-def questionwise_agreement(df: pd.DataFrame,
-                             rater1_columns: List[str],
-                             rater2_columns: List[str],
-                             rater1_name: str,
-                             rater2_name: str,
-                             topic_name: str,
-                             metric: str = 'Weighted Kappa',
-                             figsize: Tuple[int, int] = (6, 5)) -> None:
+def calculate_stat_df(data: pd.DataFrame, 
+                      rater1_columns: List[str], 
+                      rater2_columns: List[str], 
+                      categories: List[int], 
+                      stat_df_column_names: List[str], 
+                      agreement_coef: Optional[str] = None) -> pd.DataFrame:
     """
-    Compare two sets of columns question-wise using statistical measures and visualize the comparison using a bar plot.
-
+    Calculate statistics for pairs of rater columns and return them in a DataFrame.
+    
     Parameters:
-        df (pd.DataFrame): DataFrame containing the data.
-        rater1_columns (List[str]): List of column names for the first rater.
-        rater2_columns (List[str]): List of column names for the second rater.
+        data (pd.DataFrame): The input DataFrame containing the data to be analyzed.
+        rater1_columns (List[str]): A list of column names for the first set of raters.
+        rater2_columns (List[str]): A list of column names for the second set of raters.
+        categories (List[int]): List of category labels.
+        stat_df_column_names (List[str]): A list of column names for the output statistics DataFrame.
+        agreement_coef (Optional[str]): The specific agreement coefficient to extract from the statistics (e.g., 'Weighted Kappa').
+    
+    Returns:
+        pd.DataFrame: A DataFrame containing the calculated statistics. 
+        If `agreement_coef` is provided, only the specified coefficient's values are returned.
+    """
+    stats = {
+        col_name: calculate_statistics(data, r1, r2, categories)
+        for col_name, r1, r2 in zip(stat_df_column_names, rater1_columns, rater2_columns)
+    }
+    stats_df = pd.DataFrame(stats)
+    if agreement_coef:
+        stats_df = stats_df.loc[[agreement_coef]]
+    return stats_df
+
+def plot_agreement_barplot(df: pd.DataFrame,
+                           rater1_columns: List[str],
+                           rater2_columns: List[str],
+                           rater1_name: str,
+                           rater2_name: str,
+                           categories: List[int],
+                           agreement_coef: str,
+                           orientation: str = 'vertical',
+                           topic_name: str = '',
+                           xlabel: Optional[str] = None,
+                           ylabel: Optional[str] = None,
+                           ticklabels: Optional[str] = None,
+                           figsize: Tuple[int, int] = (15, 6)) -> Optional[pd.DataFrame]:
+    """
+    Plot a barplot representing agreement between two raters.
+    
+    Parameters:
+        df (pd.DataFrame): The DataFrame containing the data.
+        rater1_columns (List[str]): List of column names corresponding to ratings from rater 1.
+        rater2_columns (List[str]): List of column names corresponding to ratings from rater 2.
         rater1_name (str): Name of the first rater.
         rater2_name (str): Name of the second rater.
-        topic_name (str): Name of the topic or domain.
-        figsize (Tuple[int, int], optional): Figure size for the plot. Default is (12, 5).
+        categories (List[int]): List of category labels.
+        agreement_coef (str): The agreement coefficient to be used in the plot.
+        orientation (str, optional): Orientation of the plot, either 'vertical' (default) or 'horizontal'.
+        topic_name (str, optional): Name of the topic to be included in the plot title.
+        xlabel (str, optional): Label for the x-axis.
+        ylabel (str, optional): Label for the y-axis.
+        ticklabels (str, optional): Labels for the ticks on the x-axis or y-axis depending on orientation.
+        figsize (Tuple[int, int], optional): Figure size, default is (15, 6).
+        
+    Returns:
+        Optional[pd.DataFrame]: DataFrame containing calculated statistics for the plot, or None if not returned.
     """
+    if ticklabels is None:
+        ticklabels = rater2_columns
 
-    # Create an empty DataFrame to store statistics
-    stat_df = pd.DataFrame(columns=MODEL_15_SCORE_COLUMNS)
-
-    for i, (q_col1, q_col2) in enumerate(zip(rater1_columns, rater2_columns), start=1):
-        statistics = calculate_statistics(df, q_col1, q_col2)
-        stat_df[f"Q{i}"] = pd.Series(statistics)
-
-    stat_df = stat_df.loc[[metric]]
-
-    # Reverse values order
-    values = stat_df.iloc[0].values[::-1]
-    columns = stat_df.columns[::-1]
+    stat_df = calculate_stat_df(df, rater1_columns, rater2_columns, 
+                                categories, ticklabels)
     
-    create_plot('barh', data=stat_df, columns=columns, values=values,
-                figsize=figsize, xlim=(min(0, min(values)), 1),
-                xlabel=metric, ylabel='Questions', 
-                title=f'{topic_name}: Agreement between {rater1_name} and {rater2_name}',
-                xticks_rotation=0)
+    values = stat_df.loc[agreement_coef].values
+    columns = stat_df.columns
+
+    if orientation == 'horizontal':
+        plot_type = 'barh'
+        values = values[::-1]
+        columns = columns[::-1]
+        xlim, ylim = (min(0, min(values))-0.05, 1), None
+        if xlabel is None:
+            xlabel = agreement_coef
+
+    elif orientation == 'vertical':
+        plot_type = 'bar'
+        xlim, ylim = None, (min(0, min(values)), 1)
+        if ylabel is None:
+            ylabel = agreement_coef
+
+    else:
+        raise ValueError("Invalid orientation. Choose either 'vertical' or 'horizontal'.")
+
+    if topic_name:
+        topic_name += ': '
+
+    create_plot(plot_type, data=stat_df, columns=columns, values=values,
+                figsize=figsize, xlim=xlim, ylim=ylim,
+                xlabel=xlabel, ylabel=ylabel,
+                title=f'{topic_name}Agreement between {rater1_name} and {rater2_name} Ratings',
+                xticks_rotation=45 if orientation == 'vertical' else 0)
     
+    return stat_df
