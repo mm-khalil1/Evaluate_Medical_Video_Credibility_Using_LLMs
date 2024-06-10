@@ -394,12 +394,12 @@ def calculate_statistics(df: pd.DataFrame, col1: str, col2: str, categories: Lis
     # Store the statistics in a dictionary
     statistics = {
         # "BAG's S": bag_s_value,
-        "Brennan-Prediger Kappa": brennan_prediger_kappa,
         "Weighted Kappa": kappa,
-        "Spearman's Rho": spearman_rho,
-        "Kendall's Tau": kendall,
-        "ICC3": icc3,
         # "CCC": ccc,
+        "Kendall's Tau": kendall,
+        "Spearman's Rho": spearman_rho,
+        "ICC3": icc3,
+        "Brennan-Prediger Kappa": brennan_prediger_kappa,
         "Gwet's AC2": gwet_ac,
         # "Weighted Percent Agreement": weighted_per_agr,
 
