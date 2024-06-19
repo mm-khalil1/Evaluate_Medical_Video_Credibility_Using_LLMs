@@ -4,40 +4,40 @@ import re
 from langdetect import detect
 '''
 # Used first
-QUESTION_HEAD = "You are a medical expert. Rate the following Transcript of a YouTube video according to this question:"
+QUESTION_HEAD = 'You are a medical expert. Rate the following Transcript of a YouTube video according to this question'"
 QUESTIONS = [
     # 1
-    "Are the aims of the video clear?",
+    'Are the aims of the video clear?',
     # 2
-    "Does the video achieve its aims?",
+    'Does the video achieve its aims?',
     # 3
-    "Is the video relevant?",
+    'Is the video relevant?',
     # 4
-    "Is the video clear what sources of information were used to compile the transcript (other than the author)?",
+    'Is the video clear what sources of information were used to compile the transcript (other than the author)?',
     # 5
-    "Is the video clear When the information used or reported was produced?",
+    'Is the video clear When the information used or reported was produced?',
     # 6
-    "Is the video balanced and unbiased?",
+    'Is the video balanced and unbiased?',
     # 7
-    "Does the video provide details of additional sources of support and information?",
+    'Does the video provide details of additional sources of support and information?',
     # 8
-    "Does the video refer to areas of uncertainty?",
+    'Does the video refer to areas of uncertainty?',
     # 9
-    "Does the video describe how each treatment works?",
+    'Does the video describe how each treatment works?',
     # 10
-    "Does the video describe the benefits of each treatment?",
+    'Does the video describe the benefits of each treatment?',
     # 11
-    "Does the video describe the risks of each treatment?",
+    'Does the video describe the risks of each treatment?',
     # 12
-    "Does the video describe what would happen if no treatment is used?",
+    'Does the video describe what would happen if no treatment is used?',
     # 13
-    "Does the video describe how the treatment choices affect overall quality of life?",
+    'Does the video describe how the treatment choices affect overall quality of life?',
     # 14
-    "Is the video clear that there may be more than one possible treatment choice?",
+    'Is the video clear that there may be more than one possible treatment choice?',
     # 15
-    "Does the video provide support for shared decision-making?",
+    'Does the video provide support for shared decision-making?',
 ]
-QUESTION_TAIL = "Return an integer score from 1 to 5, where 1 means 'no', 3 means 'partially', and 5 means 'yes'. Then, explain your choice"
+QUESTION_TAIL = 'Return an integer score from 1 to 5, where 1 means 'no', 3 means 'partially', and 5 means 'yes'. Then, explain your choice'
 '''
 QUESTION_HEAD = "You are a medical expert. Rate the following transcript of a YouTube video according to the given question."
 QUESTIONS = [
@@ -137,25 +137,25 @@ QUESTION_TAIL = "Then explain you score in less than 220 words."
 
 '''
 # Binary questions for mDISCERN.
-QUESTION_HEAD = "You are a medical expert. Rate the following transcript of a YouTube video according to the given question."
+QUESTION_HEAD = 'You are a medical expert. Rate the following transcript of a YouTube video according to the given question'"
 QUESTIONS = [
     # 1
-    "Are the aims of the video clear and achieved?",
+    'Are the aims of the video clear and achieved?',
     # 2
-    "Are reliable sources of information used? (ie, publication cited, speaker is a physician)",
+    'Are reliable sources of information used? (ie, publication cited, speaker is a physician)',
     # 3
-    "Is the information presented balanced and unbiased?",
+    'Is the information presented balanced and unbiased?',
     # 4
-    "Are additional sources of information listed for patient reference?",
+    'Are additional sources of information listed for patient reference?',
     # 5
-    "Are areas of uncertainty mentioned?",
+    'Are areas of uncertainty mentioned?',
 ]
-QUESTION_TAIL = "Return an integer score of either 1 (for yes) or 0 (for no). Then explain you choice in less than 220 words."
+QUESTION_TAIL = 'Return an integer score of either 1 (for yes) or 0 (for no). Then explain you choice in less than 220 words.'
 
 '''
 
 def initialize_llm_ratings_df(videos_df: pd.DataFrame) -> pd.DataFrame:
-    """
+    '''
     Initialize DataFrame for LLM responses with 'None'.
 
     Args:
@@ -163,14 +163,14 @@ def initialize_llm_ratings_df(videos_df: pd.DataFrame) -> pd.DataFrame:
 
     Returns:
         pandas.DataFrame: DataFrame containing initialized LLM responses.
-    """
+    '''
     # Initialize DataFrame with 'Video ID' and 'Transcript' columns
     responses_df = pd.DataFrame({'Video ID': videos_df['Video ID'], 'Transcript': videos_df['Transcript']})
     # Columns 'Q1' to 'Q15' for ratings
-    rating_columns = [f"Q{i}" for i in range(1, len(QUESTIONS) + 1)]
+    rating_columns = [f'Q{i}' for i in range(1, len(QUESTIONS) + 1)]
     responses_df[rating_columns] = None
     # Columns 'Response_1' to 'Response_15' for LLM responses
-    response_columns = [f"Response_{i}" for i in range(1, len(QUESTIONS) + 1)]
+    response_columns = [f'Response_{i}' for i in range(1, len(QUESTIONS) + 1)]
     responses_df[response_columns] = None
     # Column 'Problem' if there is something wrong in the output
     responses_df['Problem'] = [set() for _ in range(len(videos_df))]
@@ -180,7 +180,7 @@ def load_responses_df(transcripts_dir: str,
                       transcripts_file_name: str, 
                       responses_dir: str, 
                       results_file_name: str) -> pd.DataFrame:
-    """
+    '''
     Load or initialize a DataFrame for LLM responses.
 
     Args:
@@ -191,7 +191,7 @@ def load_responses_df(transcripts_dir: str,
 
     Returns:
         pandas.DataFrame: DataFrame containing (initialized) LLM responses.
-    """
+    '''
     files_in_directory = os.listdir(responses_dir)
     matching_files = [file for file in files_in_directory if results_file_name in file]
     if len(matching_files) > 1:
@@ -212,7 +212,7 @@ def load_responses_df(transcripts_dir: str,
     return responses_df
 
 def remove_prompt_from_response(response: str) -> str:
-    """
+    '''
     Remove the prompt from the beginning of the response text.
 
     Args:
@@ -220,8 +220,8 @@ def remove_prompt_from_response(response: str) -> str:
 
     Returns:
         str: The response text with the prompt removed.
-    """
-    phrase = "\nScore: "
+    '''
+    phrase = '\nScore: '
     idx = response.find(phrase)  # Find the starting index of the phrase in the response
     if idx != -1:
         # Remove the prompt by slicing the response from the end of the phrase
@@ -229,10 +229,10 @@ def remove_prompt_from_response(response: str) -> str:
     return response
 
 def check_repetition(text: str, min_phrase_words=5, min_occurrences=2) -> bool:
-    """
+    '''
     Find repeated sentences longer than 'min_words' words, occurring more than 'min_occurrences' times in the given text.
     Some models are repeating some phrases in their output.    
-    """
+    '''
     # Split text into sentences
     sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
     
@@ -252,7 +252,7 @@ def check_repetition(text: str, min_phrase_words=5, min_occurrences=2) -> bool:
     return bool(repeated_phrases)
 
 def check_non_english_language(text: str) -> bool:
-    """
+    '''
     Check if the given text is in a language other than English.
 
     Args:
@@ -260,29 +260,29 @@ def check_non_english_language(text: str) -> bool:
 
     Returns:
     bool: True if the text is not in English, False otherwise.
-    """
+    '''
     # Check if the detected language is English
     return detect(text) != 'en'
 
 def fill_Problem_column(df: pd.DataFrame, video_id: str, question_num: int) -> None:
-    """Add a question number to the 'Problem' set for the specified video ID."""
+    '''Add a question number to the 'Problem' set for the specified video ID.'''
     idx = df.index[df['Video ID'] == video_id].item()
     df.at[idx, 'Problem'].add(question_num)
 
 def extract_rating(response: str, rating_scale) -> int:
-    """
+    '''
     Extract rating integer from beginning of LLM response.
     Note: Prompt should have been removed already from the beginning of the response.
 
     Returns:
         int or None: The extracted rating if found, otherwise None.
-    """
+    '''
     if rating_scale == 5:
         pattern = r'([1-5])'
     elif rating_scale == 1:
         pattern = r'([0-1])'
     else:
-        raise ValueError("rating_scale should be either 5 or 1.")
+        raise ValueError('rating_scale should be either 5 or 1.')
     match = re.search(pattern, response)  # Search for the first encountered integer
     return int(match.group(1)) if match else None
 
@@ -294,7 +294,7 @@ def check_and_store_response(response: str,
                              remove_prompt: bool = False,
                              print_response: bool = False
                              ) -> None:
-    """
+    '''
     Check and store the response and associated rating for a given video ID and question number.
 
     Args:
@@ -305,19 +305,19 @@ def check_and_store_response(response: str,
         rating_scale (int): The scale used for rating extraction. Defaults to 5.
         remove_prompt (bool): Whether to remove the prompt from the response. Defaults to False.
         print_response (bool): Whether to print the response. Defaults to False.
-    """
+    '''
     if remove_prompt:
         response = remove_prompt_from_response(response)
 
     if print_response:
-        print(f"Q{question_num} response: {response}")# if question_num == 5 else None
+        print(f'Q{question_num} response: {response}')# if question_num == 5 else None
     
     # Check if 'video_id' exists in the 'Video ID' column
     if video_id in responses_df['Video ID'].values:
         # Find the index of the row corresponding to the video ID
         idx = responses_df.index[responses_df['Video ID'] == video_id].tolist()[0]
     else:
-        print("No matching video_id found for", video_id)  
+        print('No matching video_id found for', video_id)  
         return  
 
     # Store response
@@ -333,7 +333,7 @@ def check_and_store_response(response: str,
         fill_Problem_column(responses_df, video_id, question_num)
 
 def build_question_prompt(transcript: str, question_num: int) -> str:
-    """
+    '''
     Constructs a prompt combining question head, specific question, question tail, and transcript.
 
     Args:
@@ -342,9 +342,9 @@ def build_question_prompt(transcript: str, question_num: int) -> str:
 
     Returns:
         str: The constructed prompt.
-    """
-    return f"""{QUESTION_HEAD}
+    '''
+    return f'''{QUESTION_HEAD}
 Question: {QUESTIONS[question_num - 1]}
 {QUESTION_TAIL}
 
-Transcript: {transcript}"""
+Transcript: {transcript}'''

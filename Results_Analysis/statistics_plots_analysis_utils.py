@@ -11,13 +11,13 @@ from typing import List, Tuple, Optional, Dict
 
 import warnings
 
-# Suppress warnings for scipy functions: "UserWarning: Sample size too small for normal approximation."
-warnings.filterwarnings("ignore", category=UserWarning, module="scipy")
+# Suppress warnings for scipy functions: 'UserWarning: Sample size too small for normal approximation.'
+warnings.filterwarnings('ignore', category=UserWarning, module='scipy')
 
-MODEL_15_SCORE_COLUMNS = [f"Q{i}" for i in range(1,16)]         # [Q1, Q2, ... Q15]
+MODEL_15_SCORE_COLUMNS = [f'Q{i}' for i in range(1,16)]         # [Q1, Q2, ... Q15]
 EXPERT_TOTAL_COLUMNS = ['Expert1', 'Expert2', 'Experts_Avg']    
-EXPERT1_COLUMNS = [f"Expert1 Q{i}" for i in range(1, 16)]       # [Expert1 Q1, Expert1 Q2, ... Expert1 Q15]
-EXPERT2_COLUMNS = [f"Expert2 Q{i}" for i in range(1, 16)]       # [Expert2 Q1, Expert2 Q2, ... Expert2 Q15]
+EXPERT1_COLUMNS = [f'Expert1 Q{i}' for i in range(1, 16)]       # [Expert1 Q1, Expert1 Q2, ... Expert1 Q15]
+EXPERT2_COLUMNS = [f'Expert2 Q{i}' for i in range(1, 16)]       # [Expert2 Q1, Expert2 Q2, ... Expert2 Q15]
 
 TOPICS = {
     'NE': 'Nocturnal Enuresis',
@@ -33,7 +33,7 @@ TOPICS = {
 def filter_df_by_topics(
         df: pd.DataFrame, topics_dict: dict, topic_keys: list, return_cols: list = None
         ) -> pd.DataFrame:
-    """
+    '''
     Filter DataFrame rows based on specific topics.
 
     Parameters:
@@ -44,14 +44,14 @@ def filter_df_by_topics(
 
     Returns:
         DataFrame: Filtered DataFrame containing specified columns.
-    """
+    '''
     # Input validation
     if not isinstance(df, pd.DataFrame):
         raise ValueError("Input 'df' must be a DataFrame.")
     if not isinstance(topics_dict, dict):
         raise ValueError("Input 'topics_dict' must be a dictionary.")
     if not all(key in topics_dict for key in topic_keys):
-        raise ValueError("Some topic keys are not found in topics_dict.")
+        raise ValueError('Some topic keys are not found in topics_dict.')
 
     # Construct list of topics from topic keys
     topic_list = [topics_dict[key] for key in topic_keys if key in topics_dict]
@@ -67,7 +67,7 @@ def filter_df_by_topics(
 def calculate_experts_avg_of_questions(
         df: pd.DataFrame, expert1_columns, expert2_columns, column_loc=None
         ) -> pd.DataFrame:
-    """
+    '''
     Calculate question-wise expert average for each pair of expert columns and insert them into the DataFrame.
 
     Parameters:
@@ -78,9 +78,9 @@ def calculate_experts_avg_of_questions(
 
     Returns:
         DataFrame: DataFrame with question-wise expert averages inserted.
-    """
+    '''
     if len(expert1_columns) != len(expert2_columns):
-        raise ValueError("Number of columns is not equal in expert1_columns and expert2_columns.")
+        raise ValueError('Number of columns is not equal in expert1_columns and expert2_columns.')
 
     if column_loc is None:
         column_loc = len(df.columns)
@@ -93,7 +93,7 @@ def calculate_experts_avg_of_questions(
             df[q_expert1]
         )
 
-        col = f"Experts_Avg Q{i}"
+        col = f'Experts_Avg Q{i}'
         # Insert the calculated means into the DataFrame
         if col not in df.columns:
             df.insert(loc=column_loc + i - 1,
@@ -105,14 +105,14 @@ def calculate_experts_avg_of_questions(
     return df
 
 def binarize_value(value: float, limit: float = 4) -> int:
-    """Converts a value to 0 if it's less than `limit`, otherwise to 1."""
+    '''Converts a value to 0 if it's less than `limit`, otherwise to 1.'''
     return 0 if value < limit else 1
 
 def merge_dataframes(main_df: pd.DataFrame, scores_df: pd.DataFrame, 
                      selected_columns: List[str], 
                      how: str = 'inner', on: str = 'Video ID'
                      ) -> pd.DataFrame:
-    """
+    '''
     Merge selected columns from scores_df into main_df based on specified parameters.
 
     Parameters:
@@ -127,11 +127,11 @@ def merge_dataframes(main_df: pd.DataFrame, scores_df: pd.DataFrame,
 
     Raises:
         ValueError: If any of the selected columns are not found in scores_df.
-    """
+    '''
     # Check if all selected_columns are present in scores_df
     if not all(col in scores_df.columns for col in selected_columns):
         missing_cols = [col for col in selected_columns if col not in scores_df.columns]
-        raise ValueError(f"Columns {missing_cols} not found in scores_df.")
+        raise ValueError(f'Columns {missing_cols} not found in scores_df.')
 
     try:
         return pd.merge(main_df, scores_df[selected_columns], how=how, on=on)
@@ -139,7 +139,7 @@ def merge_dataframes(main_df: pd.DataFrame, scores_df: pd.DataFrame,
         raise e
 
 def set_plot_properties(plot_obj: plt.Axes, **kwargs) -> None:
-    """
+    '''
     Set various properties of a plot object based on keyword arguments.
 
     Parameters:
@@ -160,7 +160,7 @@ def set_plot_properties(plot_obj: plt.Axes, **kwargs) -> None:
     ```
     set_plot_properties(ax, xlim=(0, 1), ylim=(0, 10), xlabel='X Axis', ylabel='Y Axis', title='Plot Title', xticks_rotation=45)
     ```
-    """
+    '''
     plot_obj.set_xlim(kwargs.get('xlim', plot_obj.get_xlim()))
     plot_obj.set_ylim(kwargs.get('ylim', plot_obj.get_ylim()))
     plot_obj.set_xlabel(kwargs.get('xlabel', plot_obj.get_xlabel()))
@@ -169,7 +169,7 @@ def set_plot_properties(plot_obj: plt.Axes, **kwargs) -> None:
     plt.xticks(rotation=kwargs.get('xticks_rotation', 0))
 
 def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None, **kwargs) -> None:
-    """
+    '''
     Create a seaborn plot of specified type with given data and properties.
 
     Parameters:
@@ -195,7 +195,7 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
     ```
     create_plot('countplot', data=df, x='category', order=['A', 'B', 'C'], color='blue', figsize=(8, 6))
     ```
-    """
+    '''
     if plot_type not in ['countplot', 'histplot', 'boxplot', 'bar', 'barh', 'heatmap']:
         raise ValueError("Invalid plot_type. Supported types: 'countplot', 'histplot', 'boxplot', 'bar', 'barh', 'heatmap'.")
 
@@ -238,21 +238,21 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
                 ax.text(width, bar.get_y() + bar.get_height() / 2, '%.2f' % width, ha='left', va='center')
 
     elif plot_type == 'heatmap':
-        sns.heatmap(data, annot=True, fmt=".2f", cmap='coolwarm', vmin=0, vmax=1, linewidths=.5, linecolor='black', ax=ax)
+        sns.heatmap(data, annot=True, fmt='.2f', cmap='coolwarm', vmin=0, vmax=1, linewidths=.5, linecolor='black', ax=ax)
 
     set_plot_properties(ax, **kwargs)
     plt.tight_layout()
 
 def test_normality(data) -> None:
-    """
+    '''
     Perform Shapiro-Wilk and Kolmogorov-Smirnov normality tests on the input data and print the p-value.
 
     Parameters:
         data (array-like): The data to be tested for normality.
-    """
+    '''
     # Input validation
     if not isinstance(data, (list, tuple, np.ndarray)):
-        raise ValueError("Input data must be an array-like object (list, tuple, or numpy array).")
+        raise ValueError('Input data must be an array-like object (list, tuple, or numpy array).')
     
     # Shapiro-Wilk Test
     _, p_value_sw = shapiro(data)
@@ -264,19 +264,19 @@ def test_normality(data) -> None:
     
     # Shapiro-Wilk Test
     if p_value_sw > alpha:
-        print(p_value_sw, "Shapiro-Wilk Test: Data looks normally distributed (fail to reject H0)")
+        print(p_value_sw, 'Shapiro-Wilk Test: Data looks normally distributed (fail to reject H0)')
     else:
-        print(p_value_sw, "Shapiro-Wilk Test: Data does not look normally distributed (reject H0)")
+        print(p_value_sw, 'Shapiro-Wilk Test: Data does not look normally distributed (reject H0)')
     
     # Kolmogorov-Smirnov Test
     if p_value_ks > alpha:
-        print(p_value_ks, "Kolmogorov-Smirnov Test: Data looks normally distributed (fail to reject H0)")
+        print(p_value_ks, 'Kolmogorov-Smirnov Test: Data looks normally distributed (fail to reject H0)')
     else:
-        print(p_value_ks, "Kolmogorov-Smirnov Test: Data does not look normally distributed (reject H0)")
+        print(p_value_ks, 'Kolmogorov-Smirnov Test: Data does not look normally distributed (reject H0)')
 
 def calculate_statistics(df: pd.DataFrame, col1: str, col2: str, 
                          categories: List[int], weights_type: str = 'quadratic') -> Dict[str, float]:
-    """
+    '''
     Calculate various statistics between two columns in a DataFrame, including Brennan-Prediger Kappa, 
     Weighted Kappa, Intra-class Correlation Coefficient, and Gwet's AC2.
 
@@ -292,7 +292,7 @@ def calculate_statistics(df: pd.DataFrame, col1: str, col2: str,
     
     Raises:
         ValueError: If the specified columns do not exist in the DataFrame.
-    """
+    '''
     # Input validation
     if col1 not in df.columns:
         raise ValueError(f"'{col1}' does not exist in the DataFrame.")
@@ -349,7 +349,7 @@ def calculate_stat_df(data: pd.DataFrame,
                       output_df_column_names: List[str], 
                       weights_type: str = 'quadratic',
                       agreement_coef: Optional[str] = None) -> pd.DataFrame:
-    """
+    '''
     Calculate statistics for pairs of rater columns and return them in a DataFrame.
     
     Parameters:
@@ -364,7 +364,7 @@ def calculate_stat_df(data: pd.DataFrame,
     Returns:
         pd.DataFrame: A DataFrame containing the calculated statistics. 
         If `agreement_coef` is provided, only the specified coefficient's values are returned.
-    """
+    '''
     stats = {
         col_name: calculate_statistics(data, r1, r2, categories, weights_type)
         for col_name, r1, r2 in zip(output_df_column_names, rater1_columns, rater2_columns)
@@ -388,7 +388,7 @@ def plot_agreement_barplot(df: pd.DataFrame,
                            ylabel: Optional[str] = None,
                            ticklabels: Optional[str] = None,
                            figsize: Tuple[int, int] = (15, 6)) -> Optional[pd.DataFrame]:
-    """
+    '''
     Plot a barplot representing agreement between two raters.
     
     Parameters:
@@ -409,7 +409,7 @@ def plot_agreement_barplot(df: pd.DataFrame,
         
     Returns:
         Optional[pd.DataFrame]: DataFrame containing calculated statistics for the plot, or None if not returned.
-    """
+    '''
     if ticklabels is None:
         ticklabels = rater2_columns
 
