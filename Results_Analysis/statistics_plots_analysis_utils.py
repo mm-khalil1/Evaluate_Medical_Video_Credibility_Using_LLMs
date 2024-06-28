@@ -5,19 +5,20 @@ import matplotlib.colors as mcolors
 import seaborn as sns
 from scipy.stats import ttest_rel, wilcoxon, shapiro, kstest, kendalltau, spearmanr
 from irrCAC.raw import CAC
-from sklearn.metrics import cohen_kappa_score
+from sklearn.metrics import cohen_kappa_score, confusion_matrix
 from pingouin import intraclass_corr
-from typing import List, Tuple, Optional, Dict
+from typing import List, Optional, Dict
 
 import warnings
 
 # Suppress warnings for scipy functions: 'UserWarning: Sample size too small for normal approximation.'
 warnings.filterwarnings('ignore', category=UserWarning, module='scipy')
 
-MODEL_15_SCORE_COLUMNS = [f'Q{i}' for i in range(1,16)]         # [Q1, Q2, ... Q15]
+QUESTIONS_COLUMNS = [f'Q{i}' for i in range(1,16)]         # [Q1, Q2, ... Q15]
 EXPERT_TOTAL_COLUMNS = ['Expert1', 'Expert2', 'Experts_Avg']    
 EXPERT1_COLUMNS = [f'Expert1 Q{i}' for i in range(1, 16)]       # [Expert1 Q1, Expert1 Q2, ... Expert1 Q15]
 EXPERT2_COLUMNS = [f'Expert2 Q{i}' for i in range(1, 16)]       # [Expert2 Q1, Expert2 Q2, ... Expert2 Q15]
+EXPERTS_AVG_COLUMNS = [f'Experts_Avg Q{i}' for i in range(1, 16)]   # [Experts_Avg Q1, Experts_Avg Q2, ... Experts_Avg Q15]
 
 TOPICS = {
     'NE': 'Nocturnal Enuresis',
@@ -30,9 +31,8 @@ TOPICS = {
     'ISA': 'Insulin Self-Administration'
 }
 
-def filter_df_by_topics(
-        df: pd.DataFrame, topics_dict: dict, topic_keys: list, return_cols: list = None
-        ) -> pd.DataFrame:
+def filter_df_by_topics(df: pd.DataFrame, topics_dict: dict, topic_keys: list, 
+                        return_cols: list = None) -> pd.DataFrame:
     '''
     Filter DataFrame rows based on specific topics.
 
@@ -64,9 +64,8 @@ def filter_df_by_topics(
     else:
         return filtered_df
 
-def calculate_experts_avg_of_questions(
-        df: pd.DataFrame, expert1_columns, expert2_columns, column_loc=None
-        ) -> pd.DataFrame:
+def calculate_experts_avg_of_questions(df: pd.DataFrame, expert1_columns, expert2_columns, 
+                                       column_loc=None) -> pd.DataFrame:
     '''
     Calculate question-wise expert average for each pair of expert columns and insert them into the DataFrame.
 
@@ -108,10 +107,8 @@ def binarize_value(value: float, limit: float = 4) -> int:
     '''Converts a value to 0 if it's less than `limit`, otherwise to 1.'''
     return 0 if value < limit else 1
 
-def merge_dataframes(main_df: pd.DataFrame, scores_df: pd.DataFrame, 
-                     selected_columns: List[str], 
-                     how: str = 'inner', on: str = 'Video ID'
-                     ) -> pd.DataFrame:
+def merge_dataframes(main_df: pd.DataFrame, scores_df: pd.DataFrame, selected_columns: List[str], 
+                     how: str = 'inner', on: str = 'Video ID') -> pd.DataFrame:
     '''
     Merge selected columns from scores_df into main_df based on specified parameters.
 
@@ -158,7 +155,8 @@ def set_plot_properties(plot_obj: plt.Axes, **kwargs) -> None:
 
     Example:
     ```
-    set_plot_properties(ax, xlim=(0, 1), ylim=(0, 10), xlabel='X Axis', ylabel='Y Axis', title='Plot Title', xticks_rotation=45)
+    set_plot_properties(ax, xlim=(0, 1), ylim=(0, 10), xlabel='X Axis', ylabel='Y Axis', 
+                        title='Plot Title', xticks_rotation=45)
     ```
     '''
     plot_obj.set_xlim(kwargs.get('xlim', plot_obj.get_xlim()))
@@ -168,7 +166,7 @@ def set_plot_properties(plot_obj: plt.Axes, **kwargs) -> None:
     plot_obj.set_title(kwargs.get('title', plot_obj.get_title()))
     plt.xticks(rotation=kwargs.get('xticks_rotation', 0))
 
-def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None, **kwargs) -> None:
+def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None, **kwargs) -> tuple:
     '''
     Create a seaborn plot of specified type with given data and properties.
 
@@ -180,7 +178,7 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
         color (str, optional): Color of the plot elements.
         **kwargs: Additional keyword arguments to customize the plot.
 
-    Supported keyword arguments:
+    Some supported keyword arguments:
         - order (list): Order of categories for 'countplot'.
         - bins (int): Number of bins for 'histplot'.
         - width (float): Width of the boxes for 'boxplot'.
@@ -189,7 +187,8 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
         - figsize (tuple): Figure size (width, height) in inches.
 
     Returns:
-        None
+        fig (plt.Figure): The figure object associated with the plot.
+        ax (plt.Axes): The axes object associated with the plot.
 
     Example:
     ```
@@ -220,18 +219,27 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
         sns.boxplot(data=data, ax=ax, width=width)
 
     elif plot_type == 'bar' or plot_type == 'barh':
-        values = kwargs.pop('values', None)
-        columns = kwargs.pop('columns', None)
+        values = data.values.flatten()
+        if len(data.columns) > 1:
+            columns = data.columns
+        elif len(data.index) > 1:
+            columns = data.index
+        else:
+            raise Warning("data shape is 1x1")
         norm = mcolors.Normalize(vmin=0, vmax=1)
         cmap = plt.cm.coolwarm
 
         if plot_type == 'bar':
+            kwargs.update({'ylim': (min(0, min(values)-0.05), max(1, max(values)+0.05))})
             bars = ax.bar(columns, values, color=cmap(norm(values)))
             for bar in bars:
                 height = bar.get_height()
                 ax.text(bar.get_x() + bar.get_width() / 2, height, '%.2f' % height, ha='center', va='bottom')
                 
         elif plot_type == 'barh':
+            values = values[::-1]
+            columns = columns[::-1]
+            kwargs.update({'xlim': (min(0, min(values)-0.05), max(1, max(values)+0.05))})
             bars = ax.barh(columns, values, color=cmap(norm(values)))
             for bar in bars:
                 width = bar.get_width()
@@ -242,6 +250,8 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
 
     set_plot_properties(ax, **kwargs)
     plt.tight_layout()
+
+    return fig, ax
 
 def test_normality(data) -> None:
     '''
@@ -273,6 +283,71 @@ def test_normality(data) -> None:
         print(p_value_ks, 'Kolmogorov-Smirnov Test: Data looks normally distributed (fail to reject H0)')
     else:
         print(p_value_ks, 'Kolmogorov-Smirnov Test: Data does not look normally distributed (reject H0)')
+
+def weights_matrix(labels, weights_type='ordinal') -> np.ndarray:
+    """
+    Generates a weights matrix for ordinal data.
+
+    Args:
+        labels: List of ordinal category labels.
+        weights_type: Type of weights to use ('linear', 'quadratic', or 'ordinal').
+
+    Returns:
+        A weights matrix of size (Q x Q), where Q is the number of ordinal categories.
+    """
+    Q = len(labels)
+    if Q == 0:
+        raise ValueError("Length of labels is 0!")
+    max_label = max(labels)
+    min_label = min(labels)
+
+    weights = np.zeros((Q, Q))
+
+    for i in range(Q):
+        for j in range(Q):
+            if weights_type == 'linear':
+                weights[i, j] = 1 - abs(labels[i] - labels[j]) / (max_label - min_label)
+            elif weights_type == 'quadratic':
+                weights[i, j] = 1 - (abs(labels[i] - labels[j]) / (max_label - min_label)) ** 2
+            elif weights_type == 'ordinal':
+                nij = max(labels[i], labels[j]) - min(labels[i], labels[j]) + 1
+                weights[i][j] = nij * (nij - 1) / 2
+            else:
+                raise ValueError("Invalid weights_type. Choose 'linear', 'quadratic' or 'ordinal'.")
+    if weights_type == 'ordinal':
+        weights = 1 - weights / np.max(weights)
+    return weights
+
+def bp_kappa(rater1, rater2, labels, weights_type='ordinal'):
+    """
+    Calculates Brennan-Prideger Kappa between two raters for ordinal data.
+
+    Args:
+        rater1: A list of ratings (indices corresponding to labels) from the first rater.
+        rater2: A list of ratings (indices corresponding to labels) from the second rater.
+        labels: List of ordinal category labels.
+        weights_type: A string specifying the weighting scheme ('linear', 'quadratic', or 'ordinal').
+
+    Returns:
+        The observed agreement between the two raters.
+    """
+    if len(rater1) != len(rater2):
+        raise ValueError('Rater lists must be of equal length')
+
+    cm = confusion_matrix(rater1, rater2, labels=labels)
+    w = weights_matrix(labels, weights_type)
+    N = len(rater1)  # Total number of observations
+    Q = len(labels)  # Number of ordinal categories
+
+    # pa = 0
+    # for i in range(N):
+    #     pa += 1 - (abs(rater1[i] - rater2[i]) / (Q - 1)) ** 2
+    # pa /= (N)
+
+    pa = np.sum(w * cm) / N
+    pe = w.sum() / Q ** 2
+    bp = (pa - pe) / (1 - pe)
+    return bp
 
 def calculate_statistics(df: pd.DataFrame, col1: str, col2: str, 
                          categories: List[int], weights_type: str = 'quadratic') -> Dict[str, float]:
@@ -314,9 +389,10 @@ def calculate_statistics(df: pd.DataFrame, col1: str, col2: str,
 
     abs_mean_diff = np.mean(np.abs(df[col1] - df[col2]))
     
-    # Calculate Brennan-Prediger Kappa and Gwet's AC2
+    bp = bp_kappa(df[col1].round(0), df[col2].round(0), labels=categories, weights_type=weights_type)
+
+    # Calculate Gwet's AC2
     cac = CAC(df[[col1, col2]], weights=weights_type, categories=categories)
-    brennan_prediger_kappa = cac.bp().get('est').get('coefficient_value')
     gwet_ac = cac.gwet().get('est').get('coefficient_value')
 
     spearman_rho, _ = spearmanr(df[col1], df[col2])
@@ -325,15 +401,15 @@ def calculate_statistics(df: pd.DataFrame, col1: str, col2: str,
 
     if weights_type not in ['linear', 'quadratic']:
         weights_type = 'quadratic'
-    kappa = cohen_kappa_score(df[col1].round(0), df[col2].round(0), labels=categories, weights=weights_type)
+    w_kappa = cohen_kappa_score(df[col1].round(0), df[col2].round(0), labels=categories, weights=weights_type)
 
     # Store the statistics in a dictionary
     statistics = {
-        "Weighted Kappa": kappa,
+        "Weighted Kappa": w_kappa,
         "Kendall's Tau": kendall,
         "Spearman's Rho": spearman_rho,
         # "ICC3": icc3,
-        "Brennan-Prediger Kappa": brennan_prediger_kappa,
+        "Brennan-Prediger Kappa": bp,
         "Gwet's AC2": gwet_ac,
 
         # "Wilcoxon signed-rank test p-value": p_value_wilcoxon,
@@ -346,9 +422,9 @@ def calculate_stat_df(data: pd.DataFrame,
                       rater1_columns: List[str], 
                       rater2_columns: List[str],
                       categories: List[int], 
-                      output_df_column_names: List[str], 
+                      agreement_coef: Optional[str] = None,
                       weights_type: str = 'quadratic',
-                      agreement_coef: Optional[str] = None) -> pd.DataFrame:
+                      output_df_column_names: Optional[List[str]] = None) -> pd.DataFrame:
     '''
     Calculate statistics for pairs of rater columns and return them in a DataFrame.
     
@@ -357,14 +433,17 @@ def calculate_stat_df(data: pd.DataFrame,
         rater1_columns (List[str]): A list of column names for the first set of raters.
         rater2_columns (List[str]): A list of column names for the second set of raters.
         categories (List[int]): List of category labels.
-        weights_type (str): Type of weights to use ('linear', 'quadratic', 'ordinal', etc.).
-        output_df_column_names (List[str]): A list of column names for the output statistics DataFrame.
         agreement_coef (Optional[str]): The specific agreement coefficient to extract from the statistics (e.g., 'Weighted Kappa').
+        weights_type (str): Type of weights to use ('linear', 'quadratic', 'ordinal', etc.).
+        output_df_column_names (Optional[List[str]]): A list of column names for the output statistics DataFrame.
     
     Returns:
         pd.DataFrame: A DataFrame containing the calculated statistics. 
         If `agreement_coef` is provided, only the specified coefficient's values are returned.
     '''
+    if output_df_column_names is None:
+        output_df_column_names = rater2_columns
+
     stats = {
         col_name: calculate_statistics(data, r1, r2, categories, weights_type)
         for col_name, r1, r2 in zip(output_df_column_names, rater1_columns, rater2_columns)
@@ -373,76 +452,3 @@ def calculate_stat_df(data: pd.DataFrame,
     if agreement_coef:
         stats_df = stats_df.loc[[agreement_coef]]
     return stats_df
-
-def plot_agreement_barplot(df: pd.DataFrame,
-                           rater1_columns: List[str],
-                           rater2_columns: List[str],
-                           rater1_name: str,
-                           rater2_name: str,
-                           categories: List[int],
-                           agreement_coef: str,
-                           weights_type: str = 'quadratic',
-                           orientation: str = 'vertical',
-                           topic_name: str = '',
-                           xlabel: Optional[str] = None,
-                           ylabel: Optional[str] = None,
-                           ticklabels: Optional[str] = None,
-                           figsize: Tuple[int, int] = (15, 6)) -> Optional[pd.DataFrame]:
-    '''
-    Plot a barplot representing agreement between two raters.
-    
-    Parameters:
-        df (pd.DataFrame): The DataFrame containing the data.
-        rater1_columns (List[str]): List of column names corresponding to ratings from rater 1.
-        rater2_columns (List[str]): List of column names corresponding to ratings from rater 2.
-        rater1_name (str): Name of the first rater.
-        rater2_name (str): Name of the second rater.
-        categories (List[int]): List of category labels.
-        agreement_coef (str): The agreement coefficient to be used in the plot.
-        weights_type (str): Type of weights to use ('linear', 'quadratic', 'ordinal', etc.).
-        orientation (str, optional): Orientation of the plot, either 'vertical' (default) or 'horizontal'.
-        topic_name (str, optional): Name of the topic to be included in the plot title.
-        xlabel (str, optional): Label for the x-axis.
-        ylabel (str, optional): Label for the y-axis.
-        ticklabels (str, optional): Labels for the ticks on the x-axis or y-axis depending on orientation.
-        figsize (Tuple[int, int], optional): Figure size, default is (15, 6).
-        
-    Returns:
-        Optional[pd.DataFrame]: DataFrame containing calculated statistics for the plot, or None if not returned.
-    '''
-    if ticklabels is None:
-        ticklabels = rater2_columns
-
-    stat_df = calculate_stat_df(df, rater1_columns, rater2_columns, 
-                                categories, ticklabels, weights_type)
-    
-    values = stat_df.loc[agreement_coef].values
-    columns = stat_df.columns
-
-    if orientation == 'horizontal':
-        plot_type = 'barh'
-        values = values[::-1]
-        columns = columns[::-1]
-        xlim, ylim = (min(0, min(values))-0.05, 1), None
-        if xlabel is None:
-            xlabel = agreement_coef
-
-    elif orientation == 'vertical':
-        plot_type = 'bar'
-        xlim, ylim = None, (min(0, min(values)), 1)
-        if ylabel is None:
-            ylabel = agreement_coef
-
-    else:
-        raise ValueError("Invalid orientation. Choose either 'vertical' or 'horizontal'.")
-
-    if topic_name:
-        topic_name += ': '
-
-    create_plot(plot_type, data=stat_df, columns=columns, values=values,
-                figsize=figsize, xlim=xlim, ylim=ylim,
-                xlabel=xlabel, ylabel=ylabel,
-                title=f'{topic_name}Agreement between {rater1_name} and {rater2_name} Ratings',
-                xticks_rotation=45 if orientation == 'vertical' else 0)
-    
-    return stat_df
