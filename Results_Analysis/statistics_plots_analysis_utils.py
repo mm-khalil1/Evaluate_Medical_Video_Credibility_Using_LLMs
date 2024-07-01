@@ -246,7 +246,8 @@ def create_plot(plot_type: str, data: pd.DataFrame, x=None, ax=None, color=None,
                 ax.text(width, bar.get_y() + bar.get_height() / 2, '%.2f' % width, ha='left', va='center')
 
     elif plot_type == 'heatmap':
-        sns.heatmap(data, annot=True, fmt='.2f', cmap='coolwarm', vmin=0, vmax=1, linewidths=.5, linecolor='black', ax=ax)
+        sns.heatmap(data, annot=True, fmt='.2f', cmap='coolwarm', 
+                    vmin=0, vmax=1, linewidths=.5, linecolor='black', ax=ax)
 
     set_plot_properties(ax, **kwargs)
     plt.tight_layout()
